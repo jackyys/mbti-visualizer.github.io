@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Visual Aid for Study of MBTI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    .absolute {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .wrapper,
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .flex-column,
+    .wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      /* width: 100%; */
+    }
+
+    .flex-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .fill-remaining {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    input {
+      height: 32px;
+      line-height: 28px;
+      color: white;
+      user-select: none;
+      border-radius: 20px;
+      background-color: #444444;
+      border: none;
+      white-space: nowrap;
+      overflow: hidden;
+      /* padding-left: 15px; */
+      text-align: center;
+      width: 200px;
+      margin: 5px;
+    }
+
+    input:focus {
+      outline: none;
+    }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      flex-wrap: wrap;
+      width: 200px;
+    }
+
+    .filter-bar>div {
+      margin: 5px;
+      background-color: #444444;
+      height: 32px;
+      width: 32px;
+      border-radius: 20px;
+      color: white;
+      text-align: center;
+      line-height: 32px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .filter-bar>div:hover {
+      background-color: #666666;
+    }
+
+    .collapsable {
+      /* display: flex; */
+      flex: 1 0;
+      transition: flex-grow 0.5s;
+      /* overflow: hidden;
+       */
+      min-height: 0px;
+    }
+
+    .is-collapsed {
+      flex-grow: 0.001;
+    }
+
+    .navi-button {
+      border: 1px solid #444444;
+      border-radius: 20px;
+      padding: 0px 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .profile {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      height: 50px;
+      width: 50px;
+      border-radius: 50px; 
+      background-size: cover;
+      transition: transform .2s, opacity .2s, top 1s, left 1s;
+      z-index: 15;
+    }
+
+    .profile > div {
+      display: flex;
+      justify-content: center;
+      text-align: center;
+      color: white;
+      overflow: visible;
+      white-space: nowrap;
+      font-size: 16px;
+      transform: translateY(-12px);
+      transition: opacity .2s;
+      -webkit-text-fill-color: white; /* Will override color (regardless of order) */
+      -webkit-text-stroke-width: .5px;
+      -webkit-text-stroke-color: black;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .profile:hover {
+      transform: scale(2) translate(-25%, -25%);
+      z-index: 20;
+    }
+
+    .profile:hover > div {
+      opacity: 1;
+    }
+
+    .axis {
+      border-radius: 4px;
+      background-color: #DDDDDD;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .axis:hover {
+      background-color: #AAAAAA;
+      z-index: 11;
+    }
+
+    .axis-label {
+      font-size: 32px;
+      user-select: none;
+      -webkit-text-fill-color: black; /* Will override color (regardless of order) */
+      -webkit-text-stroke-width: .5px;
+      -webkit-text-stroke-color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+    <h1>Visual Aid for Study of MBTI</h1>
+    <div class="flex-row">
+      <div class="filter-bar">
+        <div id="filter0">E</div>
+        <div id="filter1">N</div>
+        <div id="filter2">F</div>
+        <div id="filter3">J</div>
+        <div id="filter4">I</div>
+        <div id="filter5">S</div>
+        <div id="filter6">T</div>
+        <div id="filter7">P</div>
+      </div>
+      <div class="flex-column">
+        <div>Find examples in</div>
+        <input id="searchInput" type="text" placeholder="e.g. 'star wars'">
+      </div>
+    </div>
+    <div class="collapsable" style="max-width: 800px;">
+      <canvas id="pie" style="width:100%; height:100%; margin:20px"></canvas>
+    </div>
+    <div id="type-description" class="collapsable is-collapsed" style="max-width: 800px; padding: 0px 20px;">
+    </div>
+  </div>
+  <div id="searchResult" class="flex-column"
+    style="position: absolute; top: 100%; left: 0; height: 100%; width: 100%; transition: top 1s; pointer-events: none;">
+    <div style="flex:0 0 160px;"></div>
+    <div class="flex-column fill-remaining" style=" background-color: white; width: 100%; pointer-events: all;">
+      <svg id="closeSearch" style="margin-top: 10px; height: 30px; width: 30px; cursor: pointer;" viewPort="0 0 30 30"
+        version="1.1" preserveAspectRatio="xMidYMid" xmlns="http://www.w3.org/2000/svg">
+        <line x1="5" y1="25" x2="25" y2="5" stroke="#444444" stroke-width="8" stroke-linecap="round" />
+        <line x1="5" y1="5" x2="25" y2="25" stroke="#444444" stroke-width="8" stroke-linecap="round" />
+      </svg>
+      <div class="fill-remaining" style="width: 100%; overflow: hidden;">
+        <div style="aspect-ratio: 1; margin: auto; max-height: 100%; padding: 10px;">
+          <div id="searchPlot" style="position: relative; height: 100%; width: 100%;">
+            <div id="xAxis" class="absolute axis" style="height: 8px; width: 100%;">
+              <div class="absolute axis-label" style="left: 5%;">E</div>
+              <div class="absolute axis-label" style="left: 95%;">I</div>
+            </div>
+            <div id="yAxis" class="absolute axis" style="height: 100%; width: 8px;">              
+              <div class="absolute axis-label" style="top: 5%;">N</div>
+              <div class="absolute axis-label" style="top: 95%;">S</div>
+            </div>
+            <img id="loading" class="absolute" style="transition: opacity .2s; pointer-events: none;" src="/static/circles.svg">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <script>
+    const type_descriptions = {
+      "ISTJ": {
+        "Name": "ISTJ",
+        "Alias": "Logistician",
+        "KeyWords": "Quiet, Serious, Practical, Realistic, Responsible",
+        "FamousPeople": "George Washington, Eddard Stark(Game of Thrones)",
+        "Description": "These people tend to be reserved yet willful, with a rational outlook on life. They compose their actions carefully and carry them out with methodical purpose.",
+        "BestMatch": "ESTP"
+      },
+      "ISFJ": {
+        "Name": "ISFJ",
+        "Alias": "Defender",
+        "KeyWords": "Quiet, Friendly, Responsible, Conscientious",
+        "FamousPeople": "Queen Elizabeth II, Beyonce\u0301",
+        "Description": "These people tend to be warm and unassuming in their own steady way. They\u2019re efficient and responsible, giving careful attention to practical details in their daily lives.",
+        "BestMatch": "INFP"
+      },
+      "INFJ": {
+        "Name": "INFJ",
+        "Alias": "Advocate",
+        "KeyWords": "Conscientious, Organized, Decisive",
+        "FamousPeople": "Mother Teresa, Jon Snow(Game of Thrones)",
+        "Description": "They tend to approach life with deep thoughtfulness and imagination. Their inner vision, personal values, and a quiet, principled version of humanism guide them in all things.",
+        "BestMatch": "ENFP"
+      },
+      "INTJ": {
+        "Name": "INTJ",
+        "Alias": "Architect",
+        "KeyWords": "Skeptical, Independent, Competent",
+        "FamousPeople": "Elon Musk, Michelle Obama",
+        "Description": "These thoughtful tacticians love perfecting the details of life, applying creativity and rationality to everything they do. Their inner world is often a private, complex one.",
+        "BestMatch": "INTP"
+      },
+      "ISTP": {
+        "Name": "ISTP",
+        "Alias": "Virtuoso",
+        "KeyWords": "Tolerant, Flexible, Logical, Efficient",
+        "FamousPeople": "Michael Jordan, Tom Cruise",
+        "Description": "They tend to have an individualistic mindset, pursuing goals without needing much external connection. They engage in life with inquisitiveness and personal skill, varying their approach as needed.",
+        "BestMatch": "ENTJ"
+      },
+      "ISFP": {
+        "Name": "ISFP",
+        "Alias": "Adventurer",
+        "KeyWords": "Quiet, Friendly, Sensitive, Kind",
+        "FamousPeople": "Michael Jackson, Kevin Costner",
+        "Description": "They tend to have open minds, approaching life, new experiences, and people with grounded warmth. Their ability to stay in the moment helps them uncover exciting potentials.",
+        "BestMatch": "ESFP"
+      },
+      "INFP": {
+        "Name": "INFP",
+        "Alias": "Mediator",
+        "KeyWords": "Idealistic, Curious, Adaptable, Flexible",
+        "FamousPeople": "William Shakespeare, J. R. R. Tolkien",
+        "Description": "These rare personality types tend to be quiet, open-minded, and imaginative, and they apply a caring and creative approach to everything they do.",
+        "BestMatch": "ISFJ"
+      },
+      "INTP": {
+        "Name": "INTP",
+        "Alias": "Logician",
+        "KeyWords": "Theoretical, Abstract, Quiet, Flexible, Analytical",
+        "FamousPeople": "Albert Einstein, Bill Gates",
+        "Description": "These flexible thinkers enjoy taking an unconventional approach to many aspects of life. They often seek out unlikely paths, mixing willingness to experiment with personal creativity.",
+        "BestMatch": "INTJ"
+      },
+      "ESTP": {
+        "Name": "ESTP",
+        "Alias": "Entrepreneur",
+        "KeyWords": "Flexible, Tolerant, Active",
+        "FamousPeople": "Ernest Hemingway, Bruce Willis",
+        "Description": "They tend to be energetic and action-oriented, deftly navigating whatever is in front of them. They love uncovering life\u2019s opportunities, whether socializing with others or in more personal pursuits.",
+        "BestMatch": "ISTJ"
+      },
+      "ESFP": {
+        "Name": "ESFP",
+        "Alias": "Entertainer",
+        "KeyWords": "Outgoing, Friendly, Accepting, Flexible",
+        "FamousPeople": "Marilyn Monroe, Penny (The Big Bang Theory)",
+        "Description": "These people love vibrant experiences, engaging in life eagerly and taking pleasure in discovering the unknown. They can be very social, often encouraging others into shared activities.",
+        "BestMatch": "ISFP"
+      },
+      "ENFP": {
+        "Name": "ENFP",
+        "Alias": "Campaigner",
+        "KeyWords": "Enthusiastic, Imaginative, Flexible",
+        "FamousPeople": "Robert Downey, Jr., Quentin Tarantino",
+        "Description": "These people tend to embrace big ideas and actions that reflect their sense of hope and goodwill toward others. Their vibrant energy can flow in many directions.",
+        "BestMatch": "INFJ"
+      },
+      "ENTP": {
+        "Name": "ENTP",
+        "Alias": "Debater",
+        "KeyWords": "Quick, Ingenious, Stimulating, Outspoken",
+        "FamousPeople": "Mark Twain, Thomas Edison",
+        "Description": "They tend to be bold and creative, deconstructing and rebuilding ideas with great mental agility. They pursue their goals vigorously despite any resistance they might encounter.",
+        "BestMatch": "ENFJ"
+      },
+      "ESTJ": {
+        "Name": "ESTJ",
+        "Alias": "Executive",
+        "KeyWords": "Practical, Realistic, Decisive",
+        "FamousPeople": "John D. Rockefeller, James Monroe",
+        "Description": "They possess great fortitude, emphatically following their own sensible judgment. They often serve as a stabilizing force among others, able to offer solid direction amid adversity.",
+        "BestMatch": "ESFJ"
+      },
+      "ESFJ": {
+        "Name": "ESFJ",
+        "Alias": "Consul",
+        "KeyWords": "Warmhearted, Conscientious, Cooperative",
+        "FamousPeople": "Bill Clinton, Taylor Swift",
+        "Description": "They are attentive and people-focused, and they enjoy taking part in their social community. Their achievements are guided by decisive values, and they willingly offer guidance to others",
+        "BestMatch": "ESTJ"
+      },
+      "ENFJ": {
+        "Name": "ENFJ",
+        "Alias": "Protagonist",
+        "KeyWords": "Warm, Empathetic, Responsive, Responsible",
+        "FamousPeople": "Barack Obama, Daenerys Targaryen(Game of Thrones)",
+        "Description": "These warm, forthright types love helping others, and they tend to have strong ideas and values. They back their perspective with the creative energy to achieve their goals.",
+        "BestMatch": "ENTP"
+      },
+      "ENTJ": {
+        "Name": "ENTJ",
+        "Alias": "Commander",
+        "KeyWords": "Frank, Decisive, Forceful",
+        "FamousPeople": "Steve Jobs, Franklin D. Roosevelt",
+        "Description": "They are decisive people who love momentum and accomplishment. They gather information to construct their creative visions but rarely hesitate for long before acting on them.",
+        "BestMatch": "ISTP"
+      }
+    };
+
+    const types = [
+      'ENFJ',
+      'ENFP',
+      'ENTJ',
+      'ENTP',
+      'ESFJ',
+      'ESFP',
+      'ESTJ',
+      'ESTP',
+      'INFJ',
+      'INFP',
+      'INTJ',
+      'INTP',
+      'ISFJ',
+      'ISFP',
+      'ISTJ',
+      'ISTP',
+    ];
+
+    const type_percentages = [
+      2.5,
+      8.1,
+      1.8,
+      3.2,
+      12,
+      8.5,
+      8.7,
+      4.3,
+      1.5,
+      4.4,
+      2.1,
+      3.3,
+      13.8,
+      8.8,
+      11.6,
+      5.4,
+    ];
+
+    const displayed_percentages = [...type_percentages];
+
+    const type_colors = [...Array(16).keys()].map(i => `hsl(${i * 360 / 16}, 70%, 50%)`);
+
+    const data = {
+      labels: types,
+      datasets: [{
+        label: 'MBTI Types',
+        data: displayed_percentages,
+        backgroundColor: type_colors,
+        hoverOffset: 4
+      }]
+    };
+
+    const config = {
+      type: 'doughnut',
+      data: data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            // display: false,
+            onClick: (e, item) => {
+              showDescription(item.index);
+            },
+          },
+          tooltip: {
+            // enabled: false,
+            callbacks: {
+              label: (ctx) => `${ctx.label}: ${ctx.parsed}%`,
+            },
+          },
+        },
+
+        // title: {
+        //   display: true,
+        //   text: 'MBTI Types',
+        //   fontSize: 20,
+        // },
+        // animation: {
+        //   animateScale: true,
+        //   animateRotate: true,
+        // },
+      }
+    };
+    const chartElem = document.getElementById('pie');
+    const descriptionElem = document.getElementById('type-description');
+    const pie = new Chart(
+      chartElem,
+      config
+    );
+
+    function showDescription(index) {
+      descriptionElem.classList.remove('is-collapsed');
+      type = types[index];
+      best_match = type_descriptions[type].BestMatch;
+      descriptionElem.innerHTML = `
+        <h2>${type_descriptions[type].Name}</h2>
+        <p>${type_descriptions[type].Description}</p>
+        <p>Keywords: ${type_descriptions[type].KeyWords}</p>
+        <p>Famous People: ${type_descriptions[type].FamousPeople}</p>
+        <p>Best Match: <a class="navi-button" onclick="showDescription(types.indexOf('${best_match}'))">${type_descriptions[type].BestMatch}</a></p>
+      `;
+    }
+
+    chartElem.onclick = (event) => {
+      const activePoints = pie.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
+      if (activePoints.length > 0) {
+        const firstPoint = activePoints[0];
+        const index = firstPoint.index;
+        showDescription(index);
+      } else {
+        descriptionElem.classList.add('is-collapsed');
+      }
+    };
+
+    function findPairedSelection(i) {
+      if (i < 4) return i + 4;
+      return i - 4;
+    }
+
+    const letters = 'ENFJISTP';
+    function hasLetter(type, letter) {
+      return types[type].includes(letters[letter]);
+    }
+
+    function updateSelection(letter) {
+      filtered[letter] = !filtered[letter];
+      document.getElementById(`filter${letter}`).style.backgroundColor = filtered[letter] ? '#DDDDDD' : '#444444';
+      document.getElementById(`filter${letter}`).style.color = filtered[letter] ? '#000000' : '#FFFFFF';
+      for (let type = 0; type < 16; type++) {
+        // if (hasLetter(type, letter)) {
+          displayed_percentages[type] = typeIsFiltered(types[type]) ? 0 : type_percentages[type];
+        // }
+      }
+      pie.update();
+      for (let i = 0; i < profileElems.length; i++) {
+        profileElems[i].style.opacity = typeIsFiltered(profileData[i].type) ? 0 : 1;
+      }
+    }
+
+    function typeIsFiltered(type) {
+      for (let i = 0; i < 8; i++) {
+        if (filtered[i] && type.includes(letters[i])) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    const filtered = Array(8).fill(false);
+
+    for (let k = 0; k < 8; k++) {
+      const id = `filter${k}`;
+      const filter = document.getElementById(id);
+      const i = findPairedSelection(k);
+      filter.onclick = () => {
+        updateSelection(i);
+        const j = findPairedSelection(i);
+        if (filtered[j] && filtered[i]) {
+          updateSelection(j);
+        }
+      };
+    }
+
+    function toDimension(x) {
+      x = (x - 0.5) * 0.99 + 0.5;
+      return Math.log(x / (1 - x)) * 6 + 50;
+    }
+
+    const searchInput = document.getElementById('searchInput');
+    const searchResult = document.getElementById('searchResult');
+    const closeSearch = document.getElementById('closeSearch');
+    const searchPlot = document.getElementById('searchPlot');
+    const xAxis = document.getElementById('xAxis');
+    const yAxis = document.getElementById('yAxis');
+    const loading = document.getElementById('loading');
+    let profileElems = [];
+    let profileData = [];
+    let xAxisEncoding = 0;
+    let yAxisEncoding = 1;
+    let encodings = ['EI', 'NS', 'FT', 'JP'];
+    let prevQuery = '';
+    searchInput.onkeydown = async (e) => {
+      if (e.key === 'Enter' && searchInput.value !== '') {
+        searchResult.style.top = 0;
+        if (searchInput.value === prevQuery) {
+          return;
+        }
+        loading.style.opacity = 1;
+        prevQuery = searchInput.value;
+        const params = new URLSearchParams({ query: searchInput.value});
+        const response = await fetch('/search?' + params);
+        const data = await response.json();
+        profileData = data.reverse();
+        // destroy all profileElems
+        for (let i = 0; i < profileElems.length; i++) {
+          profileElems[i].remove();
+        }
+        profileElems = data.map(profile => {
+          const elem = document.createElement('div');
+          elem.classList.add('profile');
+          elem.style.backgroundImage = `url(${profile.image_url})`;
+          elem.style.left = `${toDimension(profile[encodings[xAxisEncoding]])}%`;
+          elem.style.top = `${toDimension(profile[encodings[yAxisEncoding]])}%`;
+          const nameElem = document.createElement('div');
+          nameElem.innerText = `${profile.name}\n\n\n${profile.type}`;
+          elem.appendChild(nameElem);
+          searchPlot.appendChild(elem);
+          elem.style.opacity = typeIsFiltered(profile.type) ? 0 : 1;
+          return elem;
+        });
+        loading.style.opacity = 0;
+      }
+    };
+
+    closeSearch.onclick = () => {
+      searchResult.style.top = '100%';
+    };
+
+    xAxis.onclick = () => {
+      xAxisEncoding = (xAxisEncoding + 1) % 4;
+      if (xAxisEncoding === yAxisEncoding) {
+        xAxisEncoding = (xAxisEncoding + 1) % 4;
+      }
+      encoding = encodings[xAxisEncoding];
+      xAxis.children[0].innerText = encoding[0];
+      xAxis.children[1].innerText = encoding[1];
+      for (let i = 0; i < profileElems.length; i++) {
+        profile = profileData[i];
+        profileElems[i].style.left = `${toDimension(profile[encoding])}%`;
+      }
+    };
+
+    yAxis.onclick = () => {
+      yAxisEncoding = (yAxisEncoding + 1) % 4;
+      if (yAxisEncoding === xAxisEncoding) {
+        yAxisEncoding = (yAxisEncoding + 1) % 4;
+      }
+      encoding = encodings[yAxisEncoding];
+      yAxis.children[0].innerText = encoding[0];
+      yAxis.children[1].innerText = encoding[1];
+      for (let i = 0; i < profileElems.length; i++) {
+        profile = profileData[i];
+        profileElems[i].style.top = `${toDimension(profile[encoding])}%`;
+      }
+    };
+  </script>
+</body>
+
+</html>
